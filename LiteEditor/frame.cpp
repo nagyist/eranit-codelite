@@ -46,8 +46,6 @@
 #include "bookmark_manager.h"
 #include "build_custom_targets_menu_manager.h"
 #include "build_settings_config.h"
-#include "builder.h"
-#include "buildmanager.h"
 #include "buildtabsettingsdata.h"
 #include "clAboutDialog.h"
 #include "clBootstrapWizard.h"
@@ -872,7 +870,7 @@ void clMainFrame::Construct()
     m_highlightWord = (bool)value;
 
     // Initialize the frame helper
-    m_frameHelper.Reset(new clMainFrameHelper(this, &m_mgr));
+    m_frameHelper = std::make_unique<clMainFrameHelper>(this, &m_mgr);
     CreateGUIControls();
 
     ManagerST::Get(); // Dummy call
@@ -3954,7 +3952,13 @@ void clMainFrame::OnSingleInstanceOpenFiles(clCommandEvent& e)
             OnSwitchWorkspace(workspaceEvent);
 
         } else {
-            GetMainBook()->OpenFile(files.Item(i), wxEmptyString);
+            long lineNumber = e.GetLineNumber();
+            if (lineNumber > 0) {
+                lineNumber--;
+            } else {
+                lineNumber = 0;
+            }
+            GetMainBook()->OpenFile(files.Item(i), wxEmptyString, lineNumber);
         }
     }
 
@@ -4308,7 +4312,7 @@ void clMainFrame::OnOpenShellFromFilePath(wxCommandEvent& e)
     DirSaver ds;
     wxSetWorkingDirectory(filepath);
 
-    // Apply the environment variabels before opening the shell
+    // Apply the environment variables before opening the shell
     EnvSetter setter;
     FileUtils::OpenTerminal(filepath);
 }
@@ -4940,7 +4944,7 @@ void clMainFrame::SelectBestEnvSet()
 
     wxString globalActiveSet = "Default";
     wxString activeSetName;
-    EvnVarList vars = EnvironmentConfig::Instance()->GetSettings();
+    EnvVarList vars = EnvironmentConfig::Instance()->GetSettings();
 
     // By default, use the global one
     activeSetName = globalActiveSet;
@@ -5258,7 +5262,7 @@ void clMainFrame::DoCreateBuildDropDownMenu(wxMenu* menu)
             clCxxWorkspaceST::Get()->GetProjBuildConf(clCxxWorkspaceST::Get()->GetActiveProjectName(), "");
         if (bldcfg && bldcfg->IsCustomBuild()) {
 
-            // Update teh custom targets
+            // Update the custom targets
             CustomTargetsMgr::Get().SetTargets(clCxxWorkspaceST::Get()->GetActiveProjectName(),
                                                bldcfg->GetCustomTargets());
 
@@ -5937,7 +5941,7 @@ void ShowNavDialog(Notebook* book)
         return;
     }
 
-    NotebookNavigationDlg dlg(book->GetParent(), book);
+    NotebookNavigationDlg dlg(EventNotifier::Get()->TopFrame(), book);
     if (dlg.ShowModal() == wxID_OK && dlg.GetSelection() != wxNOT_FOUND) {
         book->SetSelection(dlg.GetSelection());
     }
@@ -6184,7 +6188,7 @@ void clMainFrame::OnSetActivePoject(wxCommandEvent& e)
     CHECK_COND_RET(!projects.empty());
 
     // sort the entries
-    projects.Sort([](const wxString& first, const wxString& second) { return first.CmpNoCase(second) < 0; });
+    projects.Sort(+[](const wxString& first, const wxString& second) { return first.CmpNoCase(second) < 0; });
 
     int initialSelection = projects.Index(cur_active_project);
     clSingleChoiceDialog dlg(this, projects, initialSelection == wxNOT_FOUND ? 0 : initialSelection);

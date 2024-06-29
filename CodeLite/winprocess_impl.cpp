@@ -41,12 +41,14 @@
 
 typedef VOID* HPCON;
 
-typedef HRESULT WINAPI (*CreatePseudoConsole_T)(COORD size, HANDLE hInput, HANDLE hOutput, DWORD dwFlags, HPCON* phPC);
-typedef VOID WINAPI (*ClosePseudoConsole_T)(HPCON hPC);
+#if !defined(_MSC_VER)
+typedef HRESULT(WINAPI* CreatePseudoConsole_T)(COORD size, HANDLE hInput, HANDLE hOutput, DWORD dwFlags, HPCON* phPC);
+typedef VOID(WINAPI* ClosePseudoConsole_T)(HPCON hPC);
 
 thread_local bool loadOnce = true;
 thread_local CreatePseudoConsole_T CreatePseudoConsole = nullptr;
 thread_local ClosePseudoConsole_T ClosePseudoConsole = nullptr;
+#endif
 
 #ifndef PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE
 #define PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE 0x00020016
@@ -58,7 +60,6 @@ thread_local ClosePseudoConsole_T ClosePseudoConsole = nullptr;
 #include "fileutils.h"
 #include "processreaderthread.h"
 #include "procutils.h"
-#include "smart_ptr.h"
 
 #include <atomic>
 #include <memory>
@@ -309,6 +310,7 @@ IProcess* WinProcessImpl::ExecuteConPTY(wxEvtHandler* parent, const wxString& cm
         return nullptr;
     }
 
+#if !defined(_MSC_VER)
     // Create the Pseudo Console, using the pipes
     if(loadOnce) {
         loadOnce = false;
@@ -319,6 +321,7 @@ IProcess* WinProcessImpl::ExecuteConPTY(wxEvtHandler* parent, const wxString& cm
             FreeLibrary(hDLL);
         }
     }
+#endif
 
     if(!CreatePseudoConsole || !ClosePseudoConsole) {
         ::CloseHandle(inputReadSide);
@@ -833,20 +836,20 @@ bool WinProcessImpl::WriteToConsole(const wxString& buff)
     }
 
     pass += wxT("\r\n");
-    SmartPtr<INPUT_RECORD> pKeyEvents(new INPUT_RECORD[pass.Len()]);
+    std::vector<INPUT_RECORD> pKeyEvents(pass.Len());
 
     for(size_t i = 0; i < pass.Len(); i++) {
-        (pKeyEvents.Get())[i].EventType = KEY_EVENT;
-        (pKeyEvents.Get())[i].Event.KeyEvent.bKeyDown = TRUE;
-        (pKeyEvents.Get())[i].Event.KeyEvent.wRepeatCount = 1;
-        (pKeyEvents.Get())[i].Event.KeyEvent.wVirtualKeyCode = LOBYTE(::VkKeyScan(pass[i]));
-        (pKeyEvents.Get())[i].Event.KeyEvent.wVirtualScanCode = 0;
-        (pKeyEvents.Get())[i].Event.KeyEvent.uChar.UnicodeChar = pass[i];
-        (pKeyEvents.Get())[i].Event.KeyEvent.dwControlKeyState = 0;
+        pKeyEvents[i].EventType = KEY_EVENT;
+        pKeyEvents[i].Event.KeyEvent.bKeyDown = TRUE;
+        pKeyEvents[i].Event.KeyEvent.wRepeatCount = 1;
+        pKeyEvents[i].Event.KeyEvent.wVirtualKeyCode = LOBYTE(::VkKeyScan(pass[i]));
+        pKeyEvents[i].Event.KeyEvent.wVirtualScanCode = 0;
+        pKeyEvents[i].Event.KeyEvent.uChar.UnicodeChar = pass[i];
+        pKeyEvents[i].Event.KeyEvent.dwControlKeyState = 0;
     }
 
     DWORD dwTextWritten;
-    if(::WriteConsoleInput(hStdIn, pKeyEvents.Get(), pass.Len(), &dwTextWritten) == FALSE) {
+    if(::WriteConsoleInput(hStdIn, pKeyEvents.data(), pass.Len(), &dwTextWritten) == FALSE) {
         CloseHandle(hStdIn);
         return false;
     }

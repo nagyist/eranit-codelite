@@ -87,18 +87,25 @@ if(NOT MINGW AND WXC_APP)
     message("-- libplugin.so is using RPATH set to ${WXC_LIBS_DIR}")
 endif()
 
-file(GLOB SRCS "*.cpp" "LSP/*.cpp" "ThemeImporters/*.cpp" "wxTerminalCtrl/*.cpp")
+file(GLOB SRCS
+    "*.cpp"
+    "CompilerLocator/*.cpp"
+    "LSP/*.cpp"
+    "ThemeImporters/*.cpp"
+    "WorkspaceImporter/*.cpp"
+    "builder/*.cpp"
+    "wxTerminalCtrl/*.cpp")
 
 # Define the output
 add_library(plugin SHARED ${SRCS})
 
 target_link_libraries(
     plugin
-    yaml-cpp
     ${LINKER_OPTIONS}
     ${ADDITIONAL_LIBRARIES}
     ${GTK3_LIBRARIES}
     ${wxWidgets_LIBRARIES}
+    ${LIBYAML_CPP}
     -L"${CL_LIBPATH}"
     libcodelite)
 target_link_libraries(plugin ${LINKER_OPTIONS} ${ADDITIONAL_LIBRARIES} ${wxWidgets_LIBRARIES} -L"${CL_LIBPATH}"

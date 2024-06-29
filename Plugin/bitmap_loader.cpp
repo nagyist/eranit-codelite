@@ -24,7 +24,6 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "bitmap_loader.h"
 
-#include "clBitmap.h"
 #include "clFilesCollector.h"
 #include "clSystemSettings.h"
 #include "clZipReader.h"
@@ -168,6 +167,9 @@ void BitmapLoader::CreateMimeList()
         m_mimeBitmaps.AddBitmap(LoadBitmap("mime-python", 16), FileExtManager::TypePython);
         m_mimeBitmaps.AddBitmap(LoadBitmap("mime-css", 16), FileExtManager::TypeCSS);
         m_mimeBitmaps.AddBitmap(LoadBitmap("mime-js", 16), FileExtManager::TypeJS);
+        m_mimeBitmaps.AddBitmap(LoadBitmap("mime-ts", 16), FileExtManager::TypeTypeScript);
+        m_mimeBitmaps.AddBitmap(LoadBitmap("mime-java", 16), FileExtManager::TypeJava);
+        m_mimeBitmaps.AddBitmap(LoadBitmap("mime-go", 16), FileExtManager::TypeGo);
         m_mimeBitmaps.AddBitmap(LoadBitmap("cxx-workspace", 16), FileExtManager::TypeWorkspace);
         m_mimeBitmaps.AddBitmap(LoadBitmap("php-workspace", 16), FileExtManager::TypeWorkspacePHP);
         m_mimeBitmaps.AddBitmap(LoadBitmap("folder-yellow", 16), FileExtManager::TypeWorkspaceFileSystem);

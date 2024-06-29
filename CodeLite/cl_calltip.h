@@ -27,8 +27,9 @@
 
 #include "codelite_exports.h"
 #include "entry.h"
-#include "smart_ptr.h"
 #include "tokenizer.h"
+
+#include <memory>
 
 struct clTipInfo {
     wxString str;
@@ -126,23 +127,15 @@ public:
      */
     wxString All();
 
-    /**
-     * @brief get the highlight offset & width for the current tip
-     * @param index paramter index
-     * @param start [output]
-     * @param len [output]
-     */
-    void GetHighlightPos(int index, int& start, int& len);
-
     int GetCurr() const { return m_curr; }
 
     /**
      * @brief set the tip to a specific tag
      */
-    void SelectSiganture(const wxString& signature);
+    void SelectSignature(const wxString& signature);
 
     wxString TipAt(int at);
 };
 
-typedef SmartPtr<clCallTip> clCallTipPtr;
+using clCallTipPtr = std::shared_ptr<clCallTip>;
 #endif // CODELITE_CALLTIP_H

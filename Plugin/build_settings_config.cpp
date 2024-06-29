@@ -31,7 +31,6 @@
 #include "conffilelocator.h"
 #include "file_logger.h"
 #include "macros.h"
-#include "wx_xml_compatibility.h"
 #include "xmlutils.h"
 
 #include <algorithm>
@@ -136,7 +135,7 @@ CompilerPtr BuildSettingsConfig::GetCompiler(const wxString& name) const
     if(!m_compilers.count(name)) {
 
         // no such compiler...
-        return new Compiler(NULL);
+        return std::make_shared<Compiler>(nullptr);
 
     } else {
 
@@ -176,7 +175,7 @@ CompilerPtr BuildSettingsConfig::GetNextCompiler(BuildSettingsConfigCookie& cook
             if(cookie.child == NULL) {
                 cookie.parent = NULL;
             }
-            return new Compiler(n);
+            return std::make_shared<Compiler>(n);
         }
         cookie.child = cookie.child->GetNext();
     }
@@ -214,7 +213,7 @@ BuilderConfigPtr BuildSettingsConfig::GetBuilderConfig(const wxString& name)
     wxXmlNode* node = XmlUtils::FindNodeByName(m_doc->GetRoot(), wxT("BuildSystem"),
                                                name.IsEmpty() ? GetSelectedBuildSystem() : name);
     if(node) {
-        return new BuilderConfig(node);
+        return std::make_shared<BuilderConfig>(node);
     }
     return NULL;
 }

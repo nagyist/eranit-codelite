@@ -98,7 +98,7 @@ ColoursAndFontsManager::ColoursAndFontsManager()
     : m_initialized(false)
 {
     JSON json(DefaultLexerJSON);
-    m_defaultLexer.Reset(new LexerConf());
+    m_defaultLexer = std::make_shared<LexerConf>();
     m_defaultLexer->FromJSON(json.toElement());
 
     m_lexersVersion = clConfig::Get().Read(LEXERS_VERSION_STRING, LEXERS_UPGRADE_LINENUM_DEFAULT_COLOURS);
@@ -350,6 +350,7 @@ LexerConf::Ptr_t ColoursAndFontsManager::GetLexerForFile(const wxString& filenam
             lexerByContent = GetLexer("script");
             break;
         case FileExtManager::TypeJS:
+        case FileExtManager::TypeTypeScript:
             lexerByContent = GetLexer("javascript");
             break;
         case FileExtManager::TypePhp:
@@ -728,10 +729,18 @@ LexerConf::Ptr_t ColoursAndFontsManager::DoAddLexer(JSONItem json)
         lexer->SetFileSpec(filespec);
     }
 
+    if (lexer->GetName() == "javascript") {
+        AddLexerKeywords(lexer, 0, { "async", "await" });
+    }
+
     // Hack: fix Java lexer which is using the same
     // file extensions as C++...
     if (lexer->GetName() == "java" && lexer->GetFileSpec().Contains(".cpp")) {
         lexer->SetFileSpec("*.java");
+    }
+
+    if (lexer->GetName() == "java") {
+        AddLexerKeywords(lexer, 0, { "async", "await", "enum" });
     }
 
     // Append *.sqlite to the SQL lexer if missing
@@ -1114,16 +1123,16 @@ void ColoursAndFontsManager::SetThemeTextSelectionColours(const wxString& theme_
     }
 }
 
-wxFont ColoursAndFontsManager::GetFixedFont(bool small) const
+wxFont ColoursAndFontsManager::GetFixedFont(bool smaller) const
 {
     auto lexer = GetLexer("text");
     auto font = lexer->GetFontForStyle(0, EventNotifier::Get()->TopFrame());
 #ifndef __WXMAC__
-    if (small) {
+    if (smaller) {
         font.SetFractionalPointSize(font.GetPointSize() * 0.9);
     }
 #else
-    wxUnusedVar(small);
+    wxUnusedVar(smaller);
 #endif
     return font;
 }

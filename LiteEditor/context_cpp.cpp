@@ -1202,33 +1202,7 @@ void ContextCpp::OnGenerateSettersGetters(wxCommandEvent& event)
     }
 }
 
-void ContextCpp::OnKeyDown(wxKeyEvent& event)
-{
-    clEditor& ctrl = GetCtrl();
-    if (ctrl.GetFunctionTip()->IsActive()) {
-        switch (event.GetKeyCode()) {
-        case WXK_UP:
-            ctrl.GetFunctionTip()->SelectPrev(DoGetCalltipParamterIndex());
-            return;
-
-        case WXK_DOWN:
-            ctrl.GetFunctionTip()->SelectNext(DoGetCalltipParamterIndex());
-            return;
-        default: {
-            int modifier_key = event.GetModifiers();
-            wxChar ch = event.GetUnicodeKey();
-            if (modifier_key == wxMOD_CONTROL && (ch == 'J' || ch == 'N')) {
-                ctrl.GetFunctionTip()->SelectNext(DoGetCalltipParamterIndex());
-                return;
-            } else if (modifier_key == wxMOD_CONTROL && (ch == 'K' || ch == 'P')) {
-                ctrl.GetFunctionTip()->SelectPrev(DoGetCalltipParamterIndex());
-                return;
-            }
-        }
-        }
-    }
-    event.Skip();
-}
+void ContextCpp::OnKeyDown(wxKeyEvent& event) { ContextBase::OnKeyDown(event); }
 
 void ContextCpp::OnFindImpl(wxCommandEvent& event)
 {
@@ -1281,22 +1255,7 @@ void ContextCpp::SetActive()
     OnSciUpdateUI(dummy);
 }
 
-void ContextCpp::OnSciUpdateUI(wxStyledTextEvent& event)
-{
-    wxUnusedVar(event);
-    clEditor& ctrl = GetCtrl();
-
-    static long lastPos(wxNOT_FOUND);
-
-    // get the current position
-    long curpos = ctrl.GetCurrentPos();
-    if (curpos != lastPos) {
-        lastPos = curpos;
-
-        // update the calltip highlighting if needed
-        DoUpdateCalltipHighlight();
-    }
-}
+void ContextCpp::OnSciUpdateUI(wxStyledTextEvent& event) { wxUnusedVar(event); }
 
 void ContextCpp::OnDbgDwellEnd(wxStyledTextEvent& event)
 {
@@ -2632,5 +2591,21 @@ void ContextCpp::OnCodeCompleteFiles(clCodeCompletionEvent& event)
     } else {
         // not ours
         event.Skip();
+    }
+}
+
+void ContextCpp::ProcessIdleActions()
+{
+    clEditor& ctrl = GetCtrl();
+
+    static long lastPos(wxNOT_FOUND);
+
+    // get the current position
+    long curpos = ctrl.GetCurrentPos();
+    if (curpos != lastPos) {
+        lastPos = curpos;
+
+        // update the calltip highlighting if needed
+        DoUpdateCalltipHighlight();
     }
 }

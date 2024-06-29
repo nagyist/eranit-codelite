@@ -27,6 +27,7 @@
 #include "FilesModifiedDlg.h"
 #include "NotebookNavigationDlg.h"
 #include "WelcomePage.h"
+#include "clIdleEventThrottler.hpp"
 #include "clImageViewer.h"
 #include "clWorkspaceManager.h"
 #include "cl_defs.h"
@@ -84,6 +85,8 @@ void MainBook::CreateGuiControls()
 {
     wxBoxSizer* sz = new wxBoxSizer(wxVERTICAL);
     SetSizer(sz);
+
+#if MAINBOOK_AUIBOOK
     long style = wxAUI_NB_TOP | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_CLOSE_ON_ACTIVE_TAB |
                  wxAUI_NB_WINDOWLIST_BUTTON | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE;
 
@@ -91,9 +94,13 @@ void MainBook::CreateGuiControls()
         style &= ~wxAUI_NB_CLOSE_ON_ALL_TABS;
         style &= ~wxAUI_NB_CLOSE_ON_ACTIVE_TAB;
     }
+#else
+    long style = kNotebook_NewButton | kNotebook_AllowDnD | kNotebook_CloseButtonOnActiveTab |
+                 kNotebook_ShowFileListButton | kNotebook_EnableNavigationEvent | kNotebook_MouseMiddleClickClosesTab;
+#endif
 
     // load the notebook style from the configuration settings
-    m_book = new clAuiBook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
+    m_book = new MainNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, style);
     sz->Add(m_book, 1, wxEXPAND);
     sz->Layout();
 }
@@ -313,7 +320,9 @@ void MainBook::SaveSession(SessionEntry& session, wxArrayInt* excludeArr) { Crea
 
 void MainBook::DoRestoreSession(const SessionEntry& session)
 {
+#if MAINBOOK_AUIBOOK
     clAuiBookEventsDisabler events_disabler{ m_book };
+#endif
 
     size_t sel = session.GetSelectedTab();
     clEditor* active_editor = nullptr;
@@ -350,9 +359,12 @@ void MainBook::DoRestoreSession(const SessionEntry& session)
         }
     }
     SelectPage(active_editor);
+
+#if MAINBOOK_AUIBOOK
     // now that all the pages have been loaded into the book, ensure that our Ctrl-TAB window
     // will display all of them
     m_book->UpdateHistory();
+#endif
 }
 
 void MainBook::RestoreSession(const SessionEntry& session)
@@ -915,10 +927,10 @@ bool MainBook::ClosePage(wxWindow* page)
 {
     int pos = m_book->GetPageIndex(page);
     if (pos != wxNOT_FOUND && m_book->GetPage(pos) == m_welcomePage) {
-        m_book->RemovePage(pos);
+        m_book->RemovePage(pos, false);
         return true;
     } else {
-        return pos != wxNOT_FOUND && m_book->DeletePage(pos);
+        return pos != wxNOT_FOUND && m_book->DeletePage(pos, true);
     }
 }
 
@@ -998,7 +1010,9 @@ bool MainBook::CloseAll(bool cancellable)
     }
 
     // Delete the files without notifications (it will be faster)
+#if MAINBOOK_AUIBOOK
     clAuiBookEventsDisabler events_disabler{ m_book };
+#endif
 
     SendCmdEvent(wxEVT_ALL_EDITORS_CLOSING);
 
@@ -1522,7 +1536,7 @@ bool MainBook::ClosePage(IEditor* editor, bool notify)
     if (!page)
         return false;
     int pos = m_book->GetPageIndex(page);
-    return (pos != wxNOT_FOUND) && (m_book->DeletePage(pos));
+    return (pos != wxNOT_FOUND) && (m_book->DeletePage(pos, true));
 }
 
 void MainBook::DoOpenFile(const wxString& filename, const wxString& content)
@@ -1559,6 +1573,12 @@ void MainBook::OnSettingsChanged(wxCommandEvent& e)
 {
     e.Skip();
     ApplyTabLabelChanges();
+
+#if !MAINBOOK_AUIBOOK
+    m_book->EnableStyle(kNotebook_CloseButtonOnActiveTab, EditorConfigST::Get()->GetOptions()->IsTabHasXButton());
+    m_book->EnableStyle(kNotebook_MouseScrollSwitchTabs,
+                        EditorConfigST::Get()->GetOptions()->IsMouseScrollSwitchTabs());
+#endif
 }
 
 clEditor* MainBook::OpenFile(const BrowseRecord& rec)
@@ -1784,6 +1804,12 @@ void MainBook::execute_callbacks_for_file(const wxString& fullpath)
 void MainBook::OnIdle(wxIdleEvent& event)
 {
     event.Skip();
+
+    // The internval between idle events can not be under 200ms
+    static clIdleEventThrottler event_throttler{ 200 };
+    if (!event_throttler.CanHandle()) {
+        return;
+    }
 
     // avoid processing if not really needed
     if (!m_initDone || (m_book->GetPageCount() == 0)) {

@@ -26,7 +26,7 @@
 #include "continuousbuild.h"
 
 #include "build_settings_config.h"
-#include "builder.h"
+#include "builder/builder.h"
 #include "buildmanager.h"
 #include "cl_command_event.h"
 #include "compile_request.h"
@@ -249,7 +249,7 @@ void ContinuousBuild::OnBuildProcessEnded(clProcessEvent& e)
         m_view->AddFailedFile(m_buildProcess.GetFileName());
     }
 
-    // Release the resources allocted for this build
+    // Release the resources allocated for this build
     m_buildProcess.Stop();
 
     // if the queue is not empty, start another build

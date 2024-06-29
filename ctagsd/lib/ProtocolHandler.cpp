@@ -6,7 +6,6 @@
 #include "CxxPreProcessor.h"
 #include "CxxScannerTokens.h"
 #include "CxxTokenizer.h"
-#include "CxxUsingNamespaceCollector.h"
 #include "CxxVariableScanner.h"
 #include "LSP/LSPEvent.h"
 #include "LSP/basic_types.h"
@@ -17,9 +16,7 @@
 #include "clFilesCollector.h"
 #include "clTempFile.hpp"
 #include "cl_calltip.h"
-#include "crawler_include.h"
 #include "ctags_manager.h"
-#include "fc_fileopener.h"
 #include "file_logger.h"
 #include "fileextmanager.h"
 #include "tags_options_data.h"
@@ -59,7 +56,7 @@ void remove_db_if_needed(const wxString& dbpath)
         clSYSTEM() << "DB version schema upgrade is required" << endl;
         clSYSTEM() << "New schema version is:" << db->GetVersion() << endl;
         clSYSTEM() << "Current schema version is:" << db->GetSchemaVersion() << endl;
-        db.Reset(nullptr);
+        db = nullptr;
         FileUtils::RemoveFile(dbpath);
     } else {
         clDEBUG() << "No schema changes detected" << endl;
@@ -843,7 +840,7 @@ void ProtocolHandler::on_completion(std::unique_ptr<JSON>&& msg, Channel::ptr_t 
             item.addProperty("detail", tag->GetTypename());
 
             // set the kind
-            CompletionItem::eCompletionItemKind kind = LSPUtils::get_completion_kind(tag.Get());
+            CompletionItem::eCompletionItemKind kind = LSPUtils::get_completion_kind(tag.get());
             item.addProperty("kind", static_cast<int>(kind));
             counter++;
         }
@@ -1196,7 +1193,7 @@ void ProtocolHandler::on_document_signature_help(std::unique_ptr<JSON>&& msg, Ch
     candidates.clear();
     m_completer->sort_tags(matches, candidates, true, {});
 
-    clCallTipPtr tip(new clCallTip(candidates));
+    clCallTipPtr tip = std::make_shared<clCallTip>(candidates);
     LSP::SignatureHelp sh;
     if(tip) {
         CompletionHelper helper;

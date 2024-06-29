@@ -42,7 +42,7 @@ public:
     virtual wxString GetDisplayName() const;
     virtual bool Is(eEntityType type) const;
     virtual wxString Type() const;
-    // Save the class into teh database
+    // Save the class into the database
     virtual void Store(PHPLookupTable* lookup);
     virtual void FromResultSet(wxSQLite3ResultSet& res);
     virtual void PrintStdout(int indent) const;
@@ -74,7 +74,9 @@ public:
     void SetIsInterface(bool b) { SetFlag(kClass_Interface, b); }
     bool IsInterface() const { return HasFlag(kClass_Interface); }
     void SetIsTrait(bool b) { SetFlag(kClass_Trait, b); }
+    void SetIsEnum(bool b) { SetFlag(kClass_Enum, b); }
     bool IsTrait() const { return HasFlag(kClass_Trait); }
+    bool IsEnum() const { return HasFlag(kClass_Enum); }
     void SetIsAbstractClass(bool b) { SetFlag(kClass_Abstract, b); }
     bool IsAbstractClass() const { return HasFlag(kClass_Abstract); }
 };

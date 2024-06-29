@@ -149,7 +149,7 @@ public:
      * wxString str = "My String That Requires Tokenize";
      * wxString word; // The output
      * size_t offset = 0;
-     * while(clNextWord(str, offset, word)) {
+     * while (NextWord(str, offset, word)) {
      *      // Do something with "word" here
      * }
      * @codeend
@@ -313,7 +313,7 @@ public:
                          wxString& port);
 
     /**
-     * @brief covnert path to uri
+     * @brief convert path to uri
      * /home/eran/file.cpp -> file:///home/eran/file.cpp
      * file:///home/eran/file.cpp -> file:///home/eran/file.cpp
      */

@@ -41,8 +41,8 @@
 #include "editor_config.h"
 #include "editorsettingslocal.h"
 #include "environmentconfig.h"
+#include "envvarlist.h"
 #include "event_notifier.h"
-#include "evnvarlist.h"
 #include "file_logger.h"
 #include "fileutils.h"
 #include "frame.h"
@@ -188,7 +188,7 @@ FileViewTree::FileViewTree(wxWindow* parent, const wxWindowID id, const wxPoint&
         return (a->GetData().GetDisplayName().CmpNoCase(b->GetData().GetDisplayName()) < 0);
     };
     SetSortFunction(SortFunc);
-    m_colourHelper.Reset(new clTreeCtrlColourHelper(this));
+    m_colourHelper = std::make_unique<clTreeCtrlColourHelper>(this);
 
     // Initialise images map
     BitmapLoader* bmpLoader = PluginManager::Get()->GetStdIcons();
@@ -2295,7 +2295,7 @@ void FileViewTree::OnRenameProject(wxCommandEvent& event)
             return;
         }
 
-        if(!::clIsVaidProjectName(newname)) {
+        if(!::clIsValidProjectName(newname)) {
             wxMessageBox(_("Project names may contain only the following characters [a-z0-9_-]"), "CodeLite",
                          wxOK | wxICON_WARNING | wxCENTER, this);
             return;
@@ -2374,7 +2374,7 @@ void FileViewTree::OnFolderDropped(clCommandEvent& event)
         pd.m_path = folder;
 
         // Set a default empty project
-        pd.m_srcProject.Reset(new Project());
+        pd.m_srcProject = std::make_shared<Project>();
 
 // Use sensible debugger defaults
 #ifdef __WXMAC__

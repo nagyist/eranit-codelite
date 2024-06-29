@@ -277,7 +277,6 @@
     <File Name="progress_dialog.h"/>
     <File Name="readtags.h"/>
     <File Name="singleton.h"/>
-    <File Name="smart_ptr.h"/>
     <File Name="tag_tree.h"/>
     <File Name="tokenizer.h"/>
     <File Name="tree.h"/>
@@ -541,7 +540,6 @@
     <Project Name="PCH"/>
   </Dependencies>
   <Dependencies Name="Win_x64_Release">
-    <Project Name="sqlite3"/>
     <Project Name="wxsqlite3"/>
     <Project Name="dapcxx"/>
     <Project Name="ctagsdlib"/>

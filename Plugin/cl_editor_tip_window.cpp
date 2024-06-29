@@ -27,7 +27,6 @@
 
 #include "ColoursAndFontsManager.h"
 #include "drawingutils.h"
-#include "editor_config.h"
 #include "event_notifier.h"
 #include "globals.h"
 #include "ieditor.h"
@@ -48,9 +47,25 @@ END_EVENT_TABLE()
 
 #define TIP_SPACER 10
 
-clEditorTipWindow::clEditorTipWindow(wxWindow* parent)
+namespace
+{
+/// Rust & Python has the "self" as the first argument
+/// ignore it
+bool ShouldSkipFirstArgument(wxString arg, int lexerId)
+{
+    if (lexerId == wxSTC_LEX_RUST || lexerId == wxSTC_LEX_PYTHON) {
+        arg.Trim().Trim(false);
+        return arg == "self" || arg == "&self" || arg == "&mut self" || arg == "mut self";
+    } else {
+        return false;
+    }
+}
+} // namespace
+
+clEditorTipWindow::clEditorTipWindow(wxStyledTextCtrl* parent)
     : wxPanel(parent)
     , m_highlighIndex(0)
+    , m_lexerId(parent->GetLexer())
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     m_font = ColoursAndFontsManager::Get().GetFixedFont(true);
@@ -130,9 +145,15 @@ void clEditorTipWindow::OnPaint(wxPaintEvent& e)
     }
 
     dc.SetFont(m_font);
+
+    // Choose the line to highlight
+    size_t highlight_index = m_highlighIndex;
+    if (!m_args.empty() && ShouldSkipFirstArgument(m_args[0], m_lexerId)) {
+        highlight_index++;
+    }
     for (size_t i = 0; i < m_args.size(); ++i) {
         wxString line = m_args.Item(i);
-        if ((int)i == m_highlighIndex) {
+        if ((int)i == highlight_index) {
             // wxFont f = m_font;
             // f.SetWeight(wxFONTWEIGHT_BOLD);
             dc.SetBrush(highlightBgColour);
@@ -178,7 +199,7 @@ void clEditorTipWindow::AddCallTip(clCallTipPtr tip)
         ti.highlightIndex = 0;
         m_highlighIndex = 0;
         if (!m_selectedSignature.IsEmpty()) {
-            tip->SelectSiganture(m_selectedSignature);
+            tip->SelectSignature(m_selectedSignature);
             m_selectedSignature.Clear();
         }
         m_tips.push_back(ti);
@@ -286,7 +307,7 @@ wxString clEditorTipWindow::GetText()
     return wxT("");
 }
 
-void clEditorTipWindow::Activate(wxPoint pt, int lineHeight, wxColour parentBgColour)
+void clEditorTipWindow::Activate(wxPoint pt, int lineHeight, wxColour parentBgColour, int lexerId)
 {
     if (m_tips.empty())
         return;
@@ -294,6 +315,7 @@ void clEditorTipWindow::Activate(wxPoint pt, int lineHeight, wxColour parentBgCo
     m_point = pt;
     m_lineHeight = lineHeight;
     m_parentBgColour = parentBgColour;
+    m_lexerId = lexerId;
 
     // update the font to the current editor
     m_font = ColoursAndFontsManager::Get().GetFixedFont(true);
@@ -403,7 +425,7 @@ void clEditorTipWindow::SelectSignature(const wxString& signature)
 {
     m_selectedSignature = signature;
     if (GetTip()) {
-        GetTip()->SelectSiganture(m_selectedSignature);
+        GetTip()->SelectSignature(m_selectedSignature);
         m_selectedSignature.clear();
     }
 }

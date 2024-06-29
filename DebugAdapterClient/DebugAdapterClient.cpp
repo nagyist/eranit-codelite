@@ -38,6 +38,7 @@
 #include "StringUtils.h"
 #include "asyncprocess.h"
 #include "bookmark_manager.h"
+#include "clAuiBook.hpp"
 #include "clFileSystemWorkspace.hpp"
 #include "clResizableTooltip.h"
 #include "clWorkspaceManager.h"
@@ -437,7 +438,7 @@ void DebugAdapterClient::OnDebugStart(clDebugEvent& event)
 
         // Determine the executable to debug, working directory and arguments
         LOG_DEBUG(LOG) << "Preparing environment variables.." << endl;
-        env = bldConf->GetEnvironment(project.Get());
+        env = bldConf->GetEnvironment(project.get());
         LOG_DEBUG(LOG) << "Success" << endl;
         exepath = bldConf->GetCommand();
 
@@ -644,7 +645,7 @@ void DebugAdapterClient::DestroyUI()
     if (m_textView) {
         int index = clGetManager()->GetMainNotebook()->FindPage(m_textView);
         if (index != wxNOT_FOUND) {
-            clGetManager()->GetMainNotebook()->RemovePage(index);
+            clGetManager()->GetMainNotebook()->RemovePage(index, false);
         }
         m_textView->Destroy();
         m_textView = nullptr;
@@ -1119,7 +1120,7 @@ void DebugAdapterClient::OnDapSetSourceBreakpointResponse(DAPEvent& event)
     auto resp = event.GetDapResponse()->As<dap::SetBreakpointsResponse>();
     CHECK_PTR_RET(resp);
 
-    auto req = event.GetOriginatingReuqest();
+    auto req = event.GetOriginatingRequest();
     CHECK_PTR_RET(req);
 
     auto set_bp_req = req->As<dap::SetBreakpointsRequest>();

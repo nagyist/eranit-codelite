@@ -516,7 +516,6 @@ const wxString cc_text_ProtocolHandler = R"(
 #include "CxxPreProcessor.h"
 #include "CxxScannerTokens.h"
 #include "CxxTokenizer.h"
-#include "CxxUsingNamespaceCollector.h"
 #include "CxxVariableScanner.h"
 #include "LSP/LSPEvent.h"
 #include "LSP/basic_types.h"
@@ -527,9 +526,7 @@ const wxString cc_text_ProtocolHandler = R"(
 #include "SimpleTokenizer.hpp"
 #include "clFilesCollector.h"
 #include "cl_calltip.h"
-#include "crawler_include.h"
 #include "ctags_manager.h"
-#include "fc_fileopener.h"
 #include "file_logger.h"
 #include "fileextmanager.h"
 #include "tags_options_data.h"
@@ -1060,7 +1057,7 @@ public:
         // m_persistencManager = new clPersistenceManager();
         // wxPersistenceManager::Set(*m_persistencManager);
 #ifdef __WXMSW__
-        typedef BOOL WINAPI (*SetProcessDPIAwareFunc)();
+        typedef BOOL (WINAPI* SetProcessDPIAwareFunc)();
         HINSTANCE user32Dll = LoadLibrary(L"User32.dll");
         if(user32Dll) {
             SetProcessDPIAwareFunc pFunc = (SetProcessDPIAwareFunc)GetProcAddress(user32Dll, "SetProcessDPIAware");

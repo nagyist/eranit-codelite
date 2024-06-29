@@ -36,7 +36,6 @@
 #include "lexer_configuration.h"
 #include "macros.h"
 #include "pluginmanager.h"
-#include "pp_include.h"
 #include "pptable.h"
 #include "windowattrmanager.h"
 #include "wx/tokenzr.h"
@@ -142,8 +141,7 @@ void CodeCompletionSettingsDialog::DoSetEditEventsHandler(wxWindow* win)
 {
     // wxTextCtrl needs some extra special handling
     if(dynamic_cast<wxStyledTextCtrl*>(win)) {
-        clEditEventsHandler::Ptr_t handler(new clEditEventsHandler(dynamic_cast<wxStyledTextCtrl*>(win)));
-        m_handlers.push_back(handler);
+        m_handlers.push_back(std::make_unique<clEditEventsHandler>(dynamic_cast<wxStyledTextCtrl*>(win)));
     }
 
     // Check the children

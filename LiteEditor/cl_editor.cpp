@@ -35,6 +35,7 @@
 #include "buildtabsettingsdata.h"
 #include "cc_box_tip_window.h"
 #include "clEditorStateLocker.h"
+#include "clIdleEventThrottler.hpp"
 #include "clPrintout.h"
 #include "clResizableTooltip.h"
 #include "clSFTPManager.hpp"
@@ -1037,8 +1038,8 @@ void clEditor::SetProperties()
 
     bool isDarkTheme = (lexer && lexer->IsDark());
     auto indicator_style = isDarkTheme ? wxSTC_INDIC_BOX : wxSTC_INDIC_ROUNDBOX;
-    SetUserIndicatorStyleAndColour(isDarkTheme ? wxSTC_INDIC_SQUIGGLE : wxSTC_INDIC_ROUNDBOX,
-                                   isDarkTheme ? "WHITE" : "RED");
+    SetUserIndicatorStyleAndColour(isDarkTheme ? wxSTC_INDIC_COMPOSITIONTHICK : wxSTC_INDIC_ROUNDBOX,
+                                   isDarkTheme ? "PINK" : "RED");
 
     wxColour highlight_colour{ *wxGREEN };
     wxString val2 = EditorConfigST::Get()->GetString(wxT("WordHighlightColour"));
@@ -2074,7 +2075,7 @@ wxChar clEditor::PreviousChar(const int& pos, int& foundPos, bool wantWhitespace
     while (true) {
         ch = GetCharAt(curpos);
         if (ch == wxT('\t') || ch == wxT(' ') || ch == wxT('\r') || ch == wxT('\v') || ch == wxT('\n')) {
-            // if the caller is intrested in whitepsaces,
+            // if the caller is interested in whitespaces,
             // simply return it
             if (wantWhitespace) {
                 foundPos = curpos;
@@ -4048,19 +4049,18 @@ void clEditor::SetWarningMarker(int lineno, CompilerMessage&& msg)
     if (m_compilerMessagesMap.count(lineno)) {
         m_compilerMessagesMap.erase(lineno);
     }
+
+    wxString display_message = msg.message;
     m_compilerMessagesMap.insert({ lineno, std::move(msg) });
 
-    BuildTabSettingsData options;
-    EditorConfigST::Get()->ReadObject(wxT("BuildTabSettings"), &options);
-
-    if (options.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_BOOKMARKS) {
+    if (m_buildOptions.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_BOOKMARKS) {
         MarkerAdd(lineno, smt_warning);
         NotifyMarkerChanged(lineno);
     }
 
-    if (options.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_ANNOTATE) {
+    if (m_buildOptions.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_ANNOTATE) {
         // define the warning marker
-        AnnotationSetText(lineno, msg.message);
+        AnnotationSetText(lineno, display_message);
         AnnotationSetStyle(lineno, ANNOTATION_STYLE_WARNING);
     }
 }
@@ -4075,18 +4075,17 @@ void clEditor::SetErrorMarker(int lineno, CompilerMessage&& msg)
     if (m_compilerMessagesMap.count(lineno)) {
         m_compilerMessagesMap.erase(lineno);
     }
+
+    wxString display_message = msg.message;
     m_compilerMessagesMap.insert({ lineno, std::move(msg) });
 
-    BuildTabSettingsData options;
-    EditorConfigST::Get()->ReadObject(wxT("BuildTabSettings"), &options);
-
-    if (options.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_BOOKMARKS) {
+    if (m_buildOptions.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_BOOKMARKS) {
         MarkerAdd(lineno, smt_error);
         NotifyMarkerChanged(lineno);
     }
 
-    if (options.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_ANNOTATE) {
-        AnnotationSetText(lineno, msg.message);
+    if (m_buildOptions.GetErrorWarningStyle() == BuildTabSettingsData::MARKER_ANNOTATE) {
+        AnnotationSetText(lineno, display_message);
         AnnotationSetStyle(lineno, ANNOTATION_STYLE_ERROR);
     }
 }
@@ -4779,6 +4778,10 @@ void clEditor::DoCancelCalltip()
 
 int clEditor::DoGetOpenBracePos()
 {
+    if (m_calltip && m_calltip->IsShown()) {
+        return m_calltip->GetEditorStartPosition();
+    }
+
     // determine the closest open brace from the current caret position
     int depth(0);
     int char_tested(0); // we add another performance tuning here: dont test more than 256 characters backward
@@ -5209,6 +5212,8 @@ void clEditor::UpdateOptions()
         clCxxWorkspaceST::Get()->GetLocalWorkspace()->GetOptions(m_options, GetProject());
     }
 
+    EditorConfigST::Get()->ReadObject(wxT("BuildTabSettings"), &m_buildOptions);
+
     clEditorConfigEvent event(wxEVT_EDITOR_CONFIG_LOADING);
     event.SetFileName(CLRealPath(GetFileName().GetFullPath()));
     if (EventNotifier::Get()->ProcessEvent(event)) {
@@ -5336,7 +5341,7 @@ void clEditor::ShowCalltip(clCallTipPtr tip)
     // In an ideal world, we would like our tooltip to be placed
     // on top of the caret.
     wxPoint pt = PointFromPosition(GetCurrentPosition());
-    GetFunctionTip()->Activate(pt, GetCurrLineHeight(), StyleGetBackground(wxSTC_C_DEFAULT));
+    GetFunctionTip()->Activate(pt, GetCurrLineHeight(), StyleGetBackground(wxSTC_C_DEFAULT), GetLexerId());
 }
 
 int clEditor::PositionAfterPos(int pos) { return wxStyledTextCtrl::PositionAfter(pos); }
@@ -5684,7 +5689,6 @@ void clEditor::OnTimer(wxTimerEvent& event)
             }
         }
     }
-    GetContext()->ProcessIdleActions();
 }
 
 void clEditor::SplitSelection()
@@ -6515,16 +6519,12 @@ void clEditor::OnIdle(wxIdleEvent& event)
     }
 
     event.Skip();
-    std::chrono::milliseconds ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
-    // We allow IDLE event once in 100ms
-    uint64_t current_ts = ms.count();
-    if ((current_ts - m_lastIdleEvent) < 250) {
+    // The internval between idle events can not be under 250ms
+    static clIdleEventThrottler event_throttler{ 250 };
+    if (!event_throttler.CanHandle()) {
         return;
     }
-
-    m_lastIdleEvent = current_ts;
 
     if (m_scrollbar_recalc_is_required) {
         m_scrollbar_recalc_is_required = false;
@@ -6596,6 +6596,11 @@ void clEditor::OnIdle(wxIdleEvent& event)
 
     // Always update the status bar with event, calling it directly causes performance degredation
     m_mgr->GetStatusBar()->SetLinePosColumn(message);
+    
+#if defined(__WXGTK__)
+    m_mgr->GetStatusBar()->Refresh();
+#endif
+    GetContext()->ProcessIdleActions();
 }
 
 void clEditor::ClearModifiedLines()

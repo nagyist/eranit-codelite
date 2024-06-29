@@ -27,13 +27,14 @@
 
 #include "asyncprocess.h"
 #include "build_config_common.h"
-#include "builder.h"
+#include "builder/builder.h"
 #include "codelite_exports.h"
 #include "compiler.h"
 #include "configuration_object.h"
 
 #include <list>
 #include <map>
+#include <memory>
 #include <wx/arrstr.h>
 #include <wx/string.h>
 
@@ -388,6 +389,6 @@ public:
     clEnvList_t GetEnvironment(Project* project = nullptr) const;
 };
 
-typedef SmartPtr<BuildConfig> BuildConfigPtr;
+using BuildConfigPtr = std::shared_ptr<BuildConfig>;
 
 #endif // BUILD_CONFIGURATION_H
